@@ -1,0 +1,96 @@
+---
+title: "Lesson"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r setup, include=FALSE}
+library(rvest)
+library(tidyverse)
+library(lubridate)
+library(readxl)
+library(dataRetrieval)
+library(dygraphs)
+library(xts)
+```
+# download USGS data
+```{r}
+# https://waterdata.usgs.gov/usa/nwis/uv?06752260
+#normally
+lincoln_q <- readNWISdv('06752260', parameterCd = '00060', startDate= '1975-10-01', endDate='2020-02-07') %>%
+  rename(q_cfs = X_00060_00003,
+         q_cd = X_00060_00003_cd)  %>%
+  mutate(site= 'lincoln')
+summary(lincoln_q)
+
+elc_q <- readNWISdv('06752260', parameterCd = '00060', startDate= '1975-10-01', endDate='2020-02-07') %>%
+  rename(q_fcs = X_00060_00003,
+         q_cd = X_00060_00003_cd)  %>%
+  mutate(site= 'elc')
+summary(lincoln_q)
+```
+
+```{r}
+#as a function
+q_downloader <- function(site_no = '06752260',# add site default
+                         site_id = 'lincoln'){ 
+  df <- readNWISdv(site_no, 
+                   parameterCd = '00060', 
+                   startDate= '1950-10-01', 
+                   endDate='2020-02-07') %>%
+  rename(q_cfs = X_00060_00003,
+         q_cd = X_00060_00003_cd) %>%
+    mutate(site=site_id)
+  return(df)
+}
+
+lincoln_q <- q_downloader(site_no='06752260',
+                          site_id = 'lincoln')
+elc_q <- q_downloader(site_no='06752280',
+                      site_id = 'elc')
+
+combo_data <- rbind(lincoln_q, elc_q)
+summary(combo_data)
+```
+``` {r}
+
+ggplot(combo_data,aes(Date,q_cfs, color=site)) + 
+  geom_line()
+
+ggplot(combo_data,aes(q_cfs,color=site)) +
+  geom_density() +
+  scale_x_log10()
+
+```
+
+``` {r}
+
+wide_data <- combo_data%>%
+  select(-agency_cd,-site_no,-q_cd) %>%
+  pivot_wider(data=.,id_cols=c('Date'),names_from='site',values_from='q_cfs')
+
+wide_xts <- xts(wide_data %>%
+                  select(elc,lincoln),
+                order.by = wide_data$Date)
+str(wide_xts)
+dygraph(wide_xts)
+
+xts_maker <- function(df){
+  wide_data <- df%>%
+    select(-agency_cd,-site_no,-q_cd) %>%
+    pivot_wider(data=.,id_cols=c('Date'),names_from='site',values_from='q_cfs')
+
+  wide_xts <- xts(wide_data %>%
+                  select(elc,lincoln),
+                order.by = wide_data$Date)
+  
+  return(wide_xts)
+  
+}
+
+wide_xts <- xts_maker(combo_data)
+dygraph(wide_xts)
+```
