@@ -60,10 +60,8 @@ for(i in 1:length(file_names)){
 }
 
 downloaded <- file.exists(file_names)
-downloaded
 
 evaluate <- !all(downloaded)
-evaluate
 ```
 
 3. Write a custom function to read in the data and append a site column to the data. 
@@ -86,7 +84,6 @@ forcing_reader <- function(file){
     select(1:14) %>%
     mutate(site = substr(file,11,11))
 }
-
 ```
 
 4. Use the `map` function to read in both meteorological files. Display a summary of your tibble.
@@ -121,14 +118,54 @@ ggplot(forcing_full %>%
 Hint: https://ggplot2.tidyverse.org/reference/print.ggplot.html
 
 ```{r}
+precip_plotter <- function(data,singleyear){
+  data <- data %>%
+    group_by(site,month,year) %>%
+    summarize(temp = mean(`air temp [K]`)) %>%
+    filter(year==singleyear)
+  ggplot(data,aes(month,temp,color=site)) +
+    geom_line() +
+    ggtitle(year) + 
+    labs(subtitle= year)
+}
+
+for(year in 2005:2010){
+  x <- precip_plotter(forcing_full,year)
+  print(x)
+}
 ```
 
 Bonus: Make a plot of average daily precipitation by day of year (averaged across all available years). Color each site. 
 
 ```{r}
+ggplot(forcing_full %>%
+         mutate(date = make_date(year, month, day),
+                day_no = yday(date)) %>%
+         group_by(site,day_no) %>%
+         summarize(precip = mean(`precip [kg m-2 s-1]`)) %>%
+         filter(!is.na(precip))
+       , aes(day_no,precip, color=site)) +
+  geom_line()
 ```
 
 Bonus #2: Use a function and for loop to create yearly plots of precipitation by day of year. Color each site. 
 
 ```{r}
+precip_plotter_day <- function(data, singleyear){
+  ggplot(data %>%
+         mutate(date = make_date(year, month, day),
+                day_no = yday(date)) %>%
+         group_by(site,day_no) %>%
+         summarize(precip = mean(`precip [kg m-2 s-1]`)) %>%
+         filter(!is.na(precip),
+                year == singleyear)
+       , aes(day_no,precip, color=site)) +
+  geom_line()
+}
+
+precip_plotter_day(forcing_full,2010)
+
+for(eachyear in 2005:2010){
+  precip_plotter_day(forcing_full,eachyear)
+}
 ```
