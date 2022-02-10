@@ -61,7 +61,6 @@ for(i in 1:length(file_names)){
 
 # confirm data has downloaded
 downloaded <- file.exists(file_names)
-downloaded
 ```
 
 ## Read in data
@@ -144,16 +143,18 @@ for(year in 2005:2010){
 ```{r, message=FALSE, warning=FALSE}
 # create plot showing average precipitation for each day number for 2005-2010
 ggplot(forcing_full %>%
+         filter(year %in% 2005:2010,
+                site == "SA") %>%
          mutate(date = make_date(year, month, day),
                 day_no = yday(date)) %>%
-         group_by(site,day_no) %>%
-         summarize(precip = mean(`precip [kg m-2 s-1]`)) %>%
+         group_by(day_no) %>%
+         summarize(precip = mean(`precip [kg m-2 s-1]`)*86400 ) %>%
          filter(!is.na(precip)), aes(day_no,precip)) +
   geom_point() +
   geom_smooth() +
   labs(title="Daily Mean Precipitation for Snow Angel and Senator Beck Study Plots", subtitle = "2005-2010") +
   xlab("Day Number") + 
-  ylab("Precipitation (kg m-2 s-1)")
+  ylab("Precipitation (mm/day)")
 ```
 
 ### By Day Number, 2005-2010
@@ -162,17 +163,18 @@ ggplot(forcing_full %>%
 # create function to plot precipitation by day number for any given year
 precip_plotter_day <- function(data, singleyear){
   ggplot(data %>%
-         mutate(date = make_date(year, month, day),
-                day_no = yday(date)) %>%
-         group_by(site,day_no,year) %>%
-         summarize(precip = mean(`precip [kg m-2 s-1]`)) %>%
-         filter(!is.na(precip),
-                year == singleyear)
-       , aes(day_no,precip)) +
+           filter(site == "SA") %>% 
+           mutate(date = make_date(year, month, day),
+                  day_no = yday(date)) %>%
+           group_by(day_no,year) %>%
+           summarize(precip = mean(`precip [kg m-2 s-1]`)*86400 ) %>%
+           filter(!is.na(precip),
+                  year == singleyear)
+         , aes(day_no,precip)) +
   geom_point() + 
     geom_smooth()+
     xlab("Day Number") +
-    ylab("Precipitation (kg m-2 s-1)") +
+    ylab("Precipitation (mm/day)") +
     labs(title = "Daily Mean Precipitation for Snow Angel and Senator Beck Study Plots",subtitle= singleyear)
 }
 
